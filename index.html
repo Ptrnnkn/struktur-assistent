@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151515" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Struktur-Assistent</title>
+<style>
+:root{
+  --bg:#f6f5f2; --surface:#ffffff; --text:#1b1b1a; --muted:#66655f; --line:#dedcd5;
+  --accent:#1f5f6b; --accent-ink:#ffffff; --accent-soft:#e3eef0;
+  --warn:#c2410c; --warn-soft:#f8e8df; --track:#e4e2db;
+  --radius:14px;
+  --font:-apple-system,"SF Pro Text","SF Pro",system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#151515; --surface:#1e1e1e; --text:#ecebe6; --muted:#9d9b93; --line:#33322f;
+    --accent:#5fb0bf; --accent-ink:#0d1a1d; --accent-soft:#1d2d31;
+    --warn:#e0733f; --warn-soft:#33221a; --track:#2b2a28;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:17px;line-height:1.45;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+#app{
+  max-width:560px;margin:0 auto;min-height:100vh;min-height:100dvh;
+  padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));
+  display:flex;flex-direction:column;
+}
+h1{font-size:30px;line-height:1.2;margin:32px 0 20px;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere}
+h2{font-size:20px;margin:32px 0 12px;font-weight:700}
+p{margin:0 0 12px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+/* Buttons */
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;padding:12px 18px;border-radius:var(--radius);border:1.5px solid var(--line);background:var(--surface);font-weight:600;font-size:17px;text-decoration:none;color:var(--text);transition:background .15s,border-color .15s,opacity .15s}
+.btn:hover{border-color:var(--accent)}
+.btn:active{background:var(--accent-soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{opacity:.92}
+.btn.primary:active{opacity:.8;background:var(--accent)}
+.btn.big{min-height:64px;font-size:20px}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--muted)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.sm{min-height:48px;font-size:16px;font-weight:500}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+.stack{display:flex;flex-direction:column;gap:10px}
+.linkbtn{background:none;border:0;min-height:48px;padding:0 12px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:16px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn:focus-visible,.ib:focus-visible,.chip:focus-visible{outline-offset:3px}
+
+/* Eingabe */
+.field{position:relative;display:flex;gap:8px;align-items:stretch}
+textarea,input[type=text]{font:inherit;font-size:18px;color:var(--text);background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius);padding:14px 16px;width:100%;resize:none;line-height:1.4}
+textarea:focus,input[type=text]:focus{outline:3px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.mic{flex:0 0 54px;width:54px;min-height:54px;border-radius:var(--radius);border:1.5px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center}
+.mic svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mic[aria-pressed=true]{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.chip{min-height:48px;padding:10px 16px;border-radius:999px;border:1.5px solid var(--line);background:transparent;font-size:16px}
+.chip:hover{border-color:var(--accent)}
+.chip:active{background:var(--accent-soft)}
+.resume{border:1.5px solid var(--accent);background:var(--accent-soft);border-radius:var(--radius);padding:16px;margin-bottom:8px}
+.resume p{margin-bottom:12px;overflow-wrap:anywhere}
+.foot{margin-top:auto;padding-top:36px;font-size:14px;color:var(--muted)}
+
+/* Laden */
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:50vh}
+.loading{font-size:22px;color:var(--muted);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.loading{animation:none}}
+
+/* Plan */
+.meta{color:var(--muted);margin:-8px 0 24px;line-height:1.6}
+ol.steps{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:10px}
+.item{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius);padding:10px 12px 8px}
+.itemtop{display:flex;align-items:flex-start;gap:10px}
+.num{flex:0 0 28px;height:48px;display:flex;align-items:center;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600}
+.steptitle{flex:1;min-height:48px;text-align:left;background:none;border:0;padding:8px 4px;font-size:17px;font-weight:600;overflow-wrap:anywhere;border-radius:8px}
+.steptitle:hover{background:var(--accent-soft)}
+.itemtop input[type=text]{min-height:48px;padding:8px 12px;font-size:17px;font-weight:600}
+.itemctl{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0 8px;padding-left:38px}
+.grp{display:flex;align-items:center}
+.ib{width:48px;height:48px;border-radius:12px;border:0;background:transparent;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center}
+.ib:hover{background:var(--accent-soft)}
+.ib:active{background:var(--track)}
+.ib[disabled]{opacity:.28;cursor:not-allowed}
+.ib.del{color:var(--warn)}
+.mins{min-width:64px;text-align:center;font-variant-numeric:tabular-nums;font-weight:500}
+.add{margin-bottom:24px}
+.actions{margin-top:auto;padding-top:8px;display:flex;flex-direction:column;gap:10px}
+
+/* Fokus */
+.fhead{padding-top:6px}
+.ftask{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fcount{font-size:14px;color:var(--muted);margin:2px 0 8px;font-variant-numeric:tabular-nums}
+.bar{height:4px;border-radius:2px;background:var(--track);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);transition:width .4s}
+.fmid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:12px 0;min-height:0}
+.ftitle{font-size:clamp(26px,7.4vw,34px);line-height:1.2;font-weight:800;text-align:center;margin:0;letter-spacing:-.015em;overflow-wrap:anywhere;hyphens:auto}
+.ringwrap{position:relative;width:clamp(170px,min(60vw,32dvh),260px);aspect-ratio:1}
+.ringwrap svg{width:100%;height:100%;display:block}
+.ringwrap .trk{stroke:var(--track)}
+.ringwrap .prg{stroke:var(--accent);transition:stroke .3s}
+.ringwrap.over .prg{stroke:var(--warn)}
+.ringtime{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(34px,10vw,48px);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ringwrap.over .ringtime{color:var(--warn)}
+.fhint{min-height:26px;text-align:center;color:var(--muted);font-size:16px}
+.fhint.over{color:var(--warn);font-weight:600}
+.fbtns{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.flink{text-align:center}
+.check{font-size:34px;font-weight:700;color:var(--accent)}
+
+/* Alle Schritte */
+.list li.item{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.list .t{flex:1;overflow-wrap:anywhere}
+.list .mk{flex:0 0 28px;text-align:center;font-weight:700;color:var(--accent)}
+.list .cur{border-color:var(--accent);background:var(--accent-soft)}
+.list .doneitem .t{color:var(--muted);text-decoration:line-through}
+.list .m{color:var(--muted);font-variant-numeric:tabular-nums;font-size:15px;white-space:nowrap}
+
+/* Fertig */
+table{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0 12px}
+th,td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left;overflow-wrap:anywhere;padding-left:0}
+th{font-size:13px;color:var(--muted);font-weight:600}
+td:last-child,th:last-child{padding-right:0}
+tfoot td{font-weight:700;border-bottom:0}
+.seg{display:flex;gap:8px;margin:8px 0 20px}
+.seg button{flex:1;min-height:48px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);font-size:16px}
+.seg button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.q{font-weight:600;margin:0}
+.copied{min-height:22px;font-size:14px;color:var(--accent);margin:6px 0 0}
+.spacer{height:24px}
+</style>
+</head>
+<body>
+<main id="app" aria-live="off"></main>
+
+<script>
+/* ==========================================================
+   Struktur-Assistent – Prototyp
+   Single-File, kein Framework. Zustände werden per render()
+   umgeschaltet, Persistenz über localStorage (try/catch).
+   ========================================================== */
+
+// Empfänger für die Feedback-Mail (leer lassen = mailto ohne Empfänger)
+const FEEDBACK_MAIL = '';
+
+const STORE_KEY = 'struktur-assistent-v1';
+
+// Debug: ?speed=60 beschleunigt die Zeit 60-fach (nur für Tests)
+const SPEED = (function () {
+  try {
+    const s = parseFloat(new URLSearchParams(location.search).get('speed'));
+    return (s > 0 && s <= 600) ? s : 1;
+  } catch (e) { return 1; }
+})();
+
+/* ---------- Vorlagen-Bibliothek (simulierte Zerlegung) ---------- */
+// Reihenfolge ist wichtig: spezifischere Themen zuerst.
+const TEMPLATES = [
+  { name: 'Steuer', re: /steuer|beleg|unterlagen|papierkram|rechnung/, steps: [
+    ['Ordner und Briefumschlag bereitlegen', 2],
+    ['Alle Papiere auf einen Stapel legen', 8],
+    ['Grob in 4 Stapel sortieren: Einnahmen, Ausgaben, Versicherungen, Sonstiges', 12],
+    ['Jeden Stapel nach Datum ordnen', 10],
+    ['Fehlende Belege auf einen Zettel notieren', 5],
+    ['Stapel in Ordner mit Trennblättern heften', 10],
+    ['Zettel mit Fehlendem in den Kalender übertragen', 3],
+    ['Ordner wegstellen, Platz freiräumen', 2] ] },
+  { name: 'Bewerbung', re: /bewerb|lebenslauf|anschreiben/, steps: [
+    ['Stellenanzeige öffnen und Dokument anlegen', 2],
+    ['Anforderungen der Anzeige markieren', 8],
+    ['Drei passende eigene Stationen notieren', 8],
+    ['Ersten Absatz des Anschreibens schreiben', 15],
+    ['Hauptteil des Anschreibens schreiben', 20],
+    ['Lebenslauf auf die Stelle abstimmen', 15],
+    ['Alles laut lesen und korrigieren', 10],
+    ['Unterlagen als PDF speichern, Versand planen', 5] ] },
+  { name: 'Einkauf', re: /einkauf|einkaufen|supermarkt|besorg/, steps: [
+    ['Einkaufszettel und Tasche bereitlegen', 2],
+    ['Vorräte in Kühlschrank und Schrank prüfen', 5],
+    ['Fehlendes auf den Zettel schreiben', 5],
+    ['Zettel nach Supermarkt-Bereichen ordnen', 3],
+    ['Einkaufen gehen', 25],
+    ['Einkäufe verräumen, Tasche wegstellen', 10] ] },
+  { name: 'Wäsche', re: /wäsche|waesche|waschen|wasch/, steps: [
+    ['Wäschekorb und Waschmittel bereitstellen', 2],
+    ['Wäsche nach Farben sortieren', 5],
+    ['Erste Ladung einfüllen, Programm starten', 4],
+    ['Maschine ausräumen, Wäsche aufhängen', 10],
+    ['Zweite Ladung einfüllen und starten', 4],
+    ['Trockene Wäsche zusammenlegen und verräumen', 15] ] },
+  { name: 'E-Mail', re: /e-?mail|mails?\b|postfach|inbox/, steps: [
+    ['Nur das Mailprogramm öffnen, Rest schließen', 2],
+    ['Newsletter und Werbung löschen', 5],
+    ['Mails sortieren: antworten, erledigen, ablegen', 8],
+    ['Alle Mails beantworten, die unter 2 Min. dauern', 15],
+    ['Aufgaben aus Mails in die Aufgabenliste übertragen', 5],
+    ['Rest archivieren, Postfach schließen', 3] ] },
+  { name: 'Präsentation', re: /präsentation|praesentation|vortrag|folien|slides|referat/, steps: [
+    ['Neue Datei anlegen und benennen', 2],
+    ['Kernaussage in einem Satz notieren', 5],
+    ['Gliederung mit 3 bis 5 Punkten festlegen', 10],
+    ['Eine Folie pro Punkt anlegen, nur Überschriften', 8],
+    ['Jede Folie mit wenigen Stichpunkten füllen', 25],
+    ['Bilder oder Diagramme ergänzen', 15],
+    ['Einmal laut durchsprechen und Zeit stoppen', 15],
+    ['Datei speichern, Sicherungskopie anlegen', 3] ] },
+  { name: 'Arzt', re: /arzt|termin|anruf|anrufen|telefon|praxis/, steps: [
+    ['Telefon und Stift bereitlegen', 1],
+    ['Versichertenkarte bereitlegen', 2],
+    ['Anliegen in zwei Sätzen aufschreiben', 4],
+    ['Passende Zeiten im Kalender prüfen', 3],
+    ['Anrufen', 10],
+    ['Termin im Kalender eintragen', 3] ] },
+  { name: 'Packen', re: /pack|koffer|reise|urlaub/, steps: [
+    ['Koffer oder Tasche öffnen und bereitstellen', 2],
+    ['Packliste schreiben: Kleidung, Hygiene, Technik, Papiere', 8],
+    ['Papiere und Zahlungsmittel zuerst einpacken', 5],
+    ['Kleidung nach Tagen abzählen und einpacken', 15],
+    ['Kulturbeutel und Medikamente einpacken', 8],
+    ['Ladegeräte und Technik einpacken', 5],
+    ['Koffer schließen, an die Tür stellen', 3] ] },
+  { name: 'Formular', re: /formular|antrag|behörde|behoerde|\bamt\b|ummeld/, steps: [
+    ['Formular und Stift bereitlegen', 2],
+    ['Formular einmal ganz durchlesen', 5],
+    ['Benötigte Unterlagen auf einen Zettel schreiben', 5],
+    ['Unterlagen zusammensuchen', 12],
+    ['Formular ausfüllen, Unklares markieren', 20],
+    ['Kopie anfertigen, Abgabe oder Versand planen', 5] ] },
+  { name: 'Lernen', re: /lernen|lern|prüfung|pruefung|klausur|vokabel/, steps: [
+    ['Arbeitsplatz frei machen, Handy weglegen', 2],
+    ['Prüfungsstoff als Liste aufschreiben', 8],
+    ['Themen nach Schwierigkeit ordnen', 5],
+    ['Schwerstes Thema 20 Minuten durcharbeiten', 20],
+    ['Das Gelernte ohne Vorlage aufschreiben', 10],
+    ['Zweites Thema durcharbeiten', 20],
+    ['Nächste Lerneinheit im Kalender eintragen', 3] ] },
+  { name: 'Küche', re: /küche|kueche|spül|geschirr|kühlschrank|herd/, steps: [
+    ['Müllbeutel und Putztuch bereitlegen', 2],
+    ['Offensichtlichen Müll wegwerfen', 3],
+    ['Geschirr in Spülmaschine oder Spüle räumen', 8],
+    ['Arbeitsflächen leerräumen und abwischen', 10],
+    ['Herd und Spüle reinigen', 10],
+    ['Boden fegen oder wischen', 8],
+    ['Müll rausbringen, Tuch auswaschen', 3] ] },
+  { name: 'Wohnung', re: /wohnung|zimmer|schreibtisch|aufräum|aufraeum|putz/, steps: [
+    ['Eine Kiste für Fehlplatziertes bereitstellen', 2],
+    ['Müll und Offensichtliches einsammeln', 5],
+    ['Geschirr und Wäsche an ihren Ort bringen', 8],
+    ['Gegenstände aus der Kiste zurückräumen', 10],
+    ['Oberflächen freiräumen und abwischen', 10],
+    ['Boden saugen oder fegen', 10],
+    ['Kiste wegstellen, Staubsauger verräumen', 3] ] }
+];
+
+let uidCounter = 0;
+function uid() { return 's' + Date.now().toString(36) + (uidCounter++); }
+
+function mkStep(titel, minuten) {
+  return { id: uid(), titel: titel, minuten: minuten, extra: 0, elapsed: 0, carry: 0, runStart: null, status: 'open', alerted: false };
+}
+
+// Zerlegung: Vorlage per Stichwort-Regex, sonst generischer Fallback
+function decompose(text) {
+  const low = text.toLowerCase();
+  for (const t of TEMPLATES) {
+    if (t.re.test(low)) return t.steps.map(s => mkStep(s[0], s[1]));
+  }
+  let name = text.trim();
+  if (name.length > 40) name = name.slice(0, 38).trim() + '…';
+  return [
+    mkStep('Arbeitsplatz für ›' + name + '‹ frei machen', 2),
+    mkStep('Alles Nötige zusammenlegen', 5),
+    mkStep('Ersten kleinen Teil erledigen', 10),
+    mkStep('Kurz prüfen: Was fehlt noch?', 3),
+    mkStep('Nächsten Teil erledigen', 15),
+    mkStep('Abschließen und aufräumen', 5)
+  ];
+}
+
+/* ---------- Zustand ---------- */
+const BLANK = () => ({ phase: 'input', task: '', steps: [], idx: 0, view: 'step', paused: false,
+                       fb: { a: '', b: '', c: '' }, savedAt: 0 });
+let S = BLANK();
+// Flüchtiger UI-Zustand (wird nicht gespeichert)
+const ui = { loading: false, editingId: null, draft: '', transition: false, listening: false, copied: '', saved: null };
+
+const $ = (sel) => document.querySelector(sel);
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ---------- Persistenz ---------- */
+function save() {
+  try { S.savedAt = Date.now(); localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* ignorieren */ }
+}
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (o && Array.isArray(o.steps) && o.steps.length && (o.phase === 'plan' || o.phase === 'focus')) return o;
+  } catch (e) { /* ignorieren */ }
+  return null;
+}
+function clearSaved() { try { localStorage.removeItem(STORE_KEY); } catch (e) {} ui.saved = null; }
+
+/* ---------- Zeit ---------- */
+// gebrauchte Zeit eines Schritts in ms (Date.now()-Differenz, nicht Tick-Zählung)
+function stepElapsed(st) {
+  return st.elapsed + (st.runStart ? (Date.now() - st.runStart) * SPEED : 0);
+}
+function remainingMs(st) { return (st.minuten + st.extra) * 60000 - stepElapsed(st); }
+function pad(n) { return String(n).padStart(2, '0'); }
+function fmtClock(rem) {
+  if (rem > 0) { const s = Math.ceil(rem / 1000); return pad(Math.floor(s / 60)) + ':' + pad(s % 60); }
+  const o = Math.floor(-rem / 1000); return '+' + pad(Math.floor(o / 60)) + ':' + pad(o % 60);
+}
+function sumMin(steps) { return steps.reduce((a, s) => a + s.minuten, 0); }
+
+/* ---------- Ton, Vibration, Wach halten ---------- */
+let actx = null;
+function unlockAudio() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!actx) actx = new AC();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) {}
+}
+function beep() { // leiser Sinus-Doppelton
+  try {
+    if (!actx) return;
+    const t = actx.currentTime;
+    [[660, 0], [880, 0.25]].forEach(function (p) {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'sine'; o.frequency.value = p[0];
+      g.gain.setValueAtTime(0.0001, t + p[1]);
+      g.gain.exponentialRampToValueAtTime(0.12, t + p[1] + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + p[1] + 0.22);
+      o.connect(g); g.connect(actx.destination);
+      o.start(t + p[1]); o.stop(t + p[1] + 0.25);
+    });
+  } catch (e) {}
+}
+function alertUser() {
+  beep();
+  try { if (navigator.vibrate) navigator.vibrate(200); } catch (e) {}
+}
+let wake = null;
+async function lockScreen() {
+  try {
+    if (navigator.wakeLock && !wake) {
+      wake = await navigator.wakeLock.request('screen');
+      wake.addEventListener('release', function () { wake = null; });
+    }
+  } catch (e) { /* still ignorieren */ }
+}
+function unlockScreen() { try { if (wake) { wake.release(); wake = null; } } catch (e) {} }
+
+/* ---------- Ablauflogik ---------- */
+function startDecompose() {
+  const text = (ui.draft || '').trim();
+  if (!text || ui.loading) return;
+  unlockAudio();
+  clearSaved();
+  ui.loading = true;
+  render();
+  setTimeout(function () {
+    S = BLANK();
+    S.task = text;
+    S.steps = decompose(text);
+    S.phase = 'plan';
+    ui.loading = false;
+    save();
+    render();
+  }, 900);
+}
+
+function startStep(i) {
+  S.idx = i; S.view = 'step'; S.paused = false;
+  const st = S.steps[i];
+  st.runStart = Date.now();
+  ui.transition = false;
+  save(); render(); lockScreen();
+}
+
+function startFocus() {
+  unlockAudio();
+  S.phase = 'focus';
+  const first = S.steps.findIndex(s => s.status === 'open');
+  startStep(first < 0 ? 0 : first);
+}
+
+function foldRunning(st) { st.elapsed = stepElapsed(st); st.runStart = null; }
+
+function nextOpenIndex() {
+  for (let i = S.idx + 1; i < S.steps.length; i++) if (S.steps[i].status === 'open') return i;
+  for (let i = 0; i < S.steps.length; i++) if (S.steps[i].status === 'open') return i;
+  return -1;
+}
+
+function advance() {
+  ui.transition = false;
+  const n = nextOpenIndex();
+  if (n < 0) { S.phase = 'done'; unlockScreen(); save(); render(); }
+  else startStep(n);
+}
+
+function finishStep(status) {
+  const st = S.steps[S.idx];
+  if (!st || st.status !== 'open' || ui.transition) return;
+  foldRunning(st);
+  st.status = status;
+  if (status === 'done') {
+    ui.transition = true; save(); render();
+    setTimeout(advance, 1200);
+  } else advance();
+}
+
+function togglePause() {
+  const st = S.steps[S.idx];
+  if (S.paused) { st.runStart = Date.now(); S.paused = false; }
+  else { foldRunning(st); S.paused = true; }
+  save(); updateFocusButtons(); updateTimer();
+}
+
+function addFive() {
+  const st = S.steps[S.idx];
+  st.extra += 5; st.alerted = false;
+  save(); updateTimer();
+}
+
+// "Zu groß? Aufteilen": 3 Unterschritte, Minuten gleichmäßig verteilt
+function splitStep() {
+  const st = S.steps[S.idx];
+  if (!st || ui.transition) return;
+  const spent = stepElapsed(st) + st.carry;
+  const m = st.minuten + st.extra;
+  const p1 = Math.max(1, Math.round(m / 3));
+  const p2 = Math.max(1, Math.round(m / 3));
+  const p3 = Math.max(1, m - p1 - p2);
+  const parts = [
+    mkStep(st.titel + ' – Teil 1: vorbereiten', p1),
+    mkStep(st.titel + ' – Teil 2: Hauptteil', p2),
+    mkStep(st.titel + ' – Teil 3: abschließen', p3)
+  ];
+  parts[0].carry = spent; // bisher verbrauchte Zeit zählt weiter für die Auswertung, nicht für den Timer
+  S.steps.splice(S.idx, 1, parts[0], parts[1], parts[2]);
+  startStep(S.idx);
+}
+
+/* ---------- Views ---------- */
+function viewLoading() {
+  return '<div class="center"><div class="loading" role="status">Zerlege …</div></div>';
+}
+
+function viewInput() {
+  const sr = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const sv = ui.saved;
+  let hint = '';
+  if (sv) {
+    hint = '<div class="resume"><p>Du warst mitten in: <strong>' + esc(sv.task) + '</strong> – Schritt ' +
+      (Math.min(sv.idx, sv.steps.length - 1) + 1) + ' von ' + sv.steps.length + '</p>' +
+      '<div class="row"><button class="btn primary sm" data-act="resume">Weitermachen</button>' +
+      '<button class="btn sm" data-act="discard">Verwerfen</button></div></div>';
+  }
+  const mic = sr ? '<button class="mic" id="micBtn" data-act="mic" aria-label="Per Sprache eingeben" aria-pressed="' + ui.listening +
+    '"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>' : '';
+  const chips = ['Steuerunterlagen sortieren', 'Küche aufräumen', 'Bewerbung schreiben', 'Wocheneinkauf erledigen']
+    .map(c => '<button class="chip" data-act="example" data-v="' + esc(c) + '">' + esc(c) + '</button>').join('');
+  return hint + '<h1>Was steht an?</h1>' +
+    '<div class="field"><textarea id="taskInput" rows="2" placeholder="z. B. Steuerunterlagen sortieren" aria-label="Aufgabe">' + esc(ui.draft) + '</textarea>' + mic + '</div>' +
+    '<div style="margin-top:12px"><button class="btn primary big" id="goBtn" data-act="split"' + (ui.draft.trim() ? '' : ' disabled') + '>Zerlegen</button></div>' +
+    '<div class="chips">' + chips + '</div>' +
+    '<div class="foot">Prototyp – die Zerlegung ist hier noch simuliert, in der App macht das eine KI.' +
+    (SPEED !== 1 ? ' Tempo ×' + SPEED + '.' : '') + '</div>';
+}
+
+function viewPlan() {
+  const n = S.steps.length, total = sumMin(S.steps);
+  const end = new Date(Date.now() + total * 60000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const items = S.steps.map(function (s, i) {
+    const title = ui.editingId === s.id
+      ? '<input type="text" id="editInput" data-id="' + s.id + '" value="' + esc(s.titel) + '" aria-label="Schritt bearbeiten">'
+      : '<button class="steptitle" data-act="edit" data-id="' + s.id + '" aria-label="Schritt bearbeiten: ' + esc(s.titel) + '">' + esc(s.titel) + '</button>';
+    return '<li class="item" data-id="' + s.id + '"><div class="itemtop"><span class="num">' + (i + 1) + '</span>' + title + '</div>' +
+      '<div class="itemctl"><div class="grp">' +
+      '<button class="ib" data-act="minus" data-id="' + s.id + '" aria-label="Eine Minute weniger"' + (s.minuten <= 1 ? ' disabled' : '') + '>−</button>' +
+      '<span class="mins">' + s.minuten + ' Min.</span>' +
+      '<button class="ib" data-act="plus" data-id="' + s.id + '" aria-label="Eine Minute mehr"' + (s.minuten >= 60 ? ' disabled' : '') + '>+</button></div>' +
+      '<div class="grp">' +
+      '<button class="ib" data-act="up" data-id="' + s.id + '" aria-label="Nach oben"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+      '<button class="ib" data-act="down" data-id="' + s.id + '" aria-label="Nach unten"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
+      '<button class="ib del" data-act="del" data-id="' + s.id + '" aria-label="Schritt löschen">×</button></div></div></li>';
+  }).join('');
+  return '<h1>' + esc(S.task) + '</h1>' +
+    '<div class="meta">' + n + ' Schritte · ca. ' + total + ' Min.<br>voraussichtlich fertig um ' + end + '</div>' +
+    '<ol class="steps">' + items + '</ol>' +
+    '<button class="btn add" data-act="add">+ Schritt hinzufügen</button>' +
+    '<div class="actions"><button class="btn primary big" data-act="start"' + (n ? '' : ' disabled') + '>Los geht\'s</button>' +
+    '<button class="btn" data-act="redo">Neu zerlegen</button></div>';
+}
+
+function viewFocus() {
+  const st = S.steps[S.idx];
+  const doneCount = S.steps.filter(s => s.status !== 'open').length;
+  const pct = Math.round(doneCount / S.steps.length * 100);
+  const head = '<div class="fhead"><div class="ftask">' + esc(S.task) + '</div>' +
+    '<div class="fcount">Schritt ' + (S.idx + 1) + ' von ' + S.steps.length + '</div>' +
+    '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>';
+  if (ui.transition) {
+    return head + '<div class="center"><div class="check" role="status">✓ Erledigt</div></div>';
+  }
+  const C = (2 * Math.PI * 82).toFixed(2);
+  return head +
+    '<div class="fmid"><h1 class="ftitle">' + esc(st.titel) + '</h1>' +
+    '<div class="ringwrap" id="tWrap" role="timer"><svg viewBox="0 0 200 200" aria-hidden="true">' +
+    '<circle class="trk" cx="100" cy="100" r="82" fill="none" stroke-width="30"/>' +
+    '<circle class="prg" id="tRing" cx="100" cy="100" r="82" fill="none" stroke-width="30" transform="rotate(-90 100 100)" stroke-dasharray="' + C + ' ' + C + '" stroke-dashoffset="0" data-c="' + C + '"/></svg>' +
+    '<div class="ringtime" id="tTime">--:--</div></div>' +
+    '<div class="fhint" id="tHint"></div></div>' +
+    '<div class="fbtns"><button class="btn primary big" data-act="done">Erledigt</button>' +
+    '<div class="fgrid"><button class="btn sm" data-act="plus5">+5 Min.</button>' +
+    '<button class="btn sm" id="pauseBtn" data-act="pause">' + (S.paused ? 'Weiter' : 'Pause') + '</button>' +
+    '<button class="btn sm" data-act="shrink">Zu groß? Aufteilen</button>' +
+    '<button class="btn sm" data-act="skip">Überspringen</button></div>' +
+    '<div class="flink"><button class="linkbtn" data-act="all">Alle Schritte</button></div></div>';
+}
+
+function viewAll() {
+  const items = S.steps.map(function (s, i) {
+    const cur = i === S.idx, d = s.status === 'done', sk = s.status === 'skipped';
+    return '<li class="item' + (cur ? ' cur' : '') + (d || sk ? ' doneitem' : '') + '"><span class="mk">' +
+      (d ? '✓' : sk ? '–' : (i + 1)) + '</span><span class="t">' + esc(s.titel) + '</span><span class="m">' + s.minuten + ' Min.</span></li>';
+  }).join('');
+  return '<h1>' + esc(S.task) + '</h1><ol class="steps list">' + items + '</ol>' +
+    '<div class="actions"><button class="btn primary" data-act="back">Zurück zum Schritt</button></div>';
+}
+
+function minLabel(ms) { const m = Math.round(ms / 60000); return m < 1 ? '<1' : String(m); }
+
+function summary() {
+  let planned = 0, plannedDone = 0, usedMs = 0;
+  S.steps.forEach(function (s) {
+    planned += s.minuten;
+    if (s.status === 'done') { plannedDone += s.minuten; usedMs += s.elapsed + s.carry; }
+  });
+  return { planned: planned, plannedDone: plannedDone, usedMs: usedMs, used: Math.round(usedMs / 60000) };
+}
+
+function viewDone() {
+  const sm = summary();
+  const rows = S.steps.map(function (s) {
+    const used = s.status === 'done' ? minLabel(s.elapsed + s.carry) + ' Min.' : 'übersprungen';
+    return '<tr><td>' + esc(s.titel) + '</td><td>' + s.minuten + ' Min.</td><td>' + used + '</td></tr>';
+  }).join('');
+  const diff = sm.used - sm.plannedDone;
+  let sentence;
+  if (diff >= 2) sentence = 'Du hast ' + diff + ' Min. länger gebraucht als geplant. Das ist eine nützliche Info für die nächste Schätzung.';
+  else if (diff <= -2) sentence = 'Du warst ' + (-diff) + ' Min. schneller als geplant.';
+  else sentence = 'Geplant und gebraucht liegen nah beieinander.';
+  const seg = function (q) {
+    return '<div class="seg" role="group">' + [['ja', 'ja'], ['teilweise', 'teilweise'], ['nein', 'nein']].map(function (o) {
+      return '<button data-act="fb" data-q="' + q + '" data-v="' + o[0] + '" aria-pressed="' + (S.fb[q] === o[0]) + '">' + o[1] + '</button>';
+    }).join('') + '</div>';
+  };
+  return '<h1>Geschafft: ' + esc(S.task) + '</h1>' +
+    '<table><thead><tr><th>Schritt</th><th>geplant</th><th>gebraucht</th></tr></thead><tbody>' + rows + '</tbody>' +
+    '<tfoot><tr><td>Summe</td><td>' + sm.plannedDone + ' Min.</td><td>' + sm.used + ' Min.</td></tr></tfoot></table>' +
+    '<p>' + sentence + '</p>' +
+    '<h2>Kurzes Feedback?</h2>' +
+    '<p class="q">Waren die Schritte brauchbar?</p>' + seg('a') +
+    '<p class="q">Hat der Timer geholfen?</p>' + seg('b') +
+    '<p class="q"><label for="fbText">Was hat gefehlt oder genervt?</label></p>' +
+    '<textarea id="fbText" rows="3" style="margin-top:8px">' + esc(S.fb.c) + '</textarea>' +
+    '<div class="spacer"></div>' +
+    '<div class="stack"><a class="btn primary" id="mailBtn" href="#">Feedback per Mail senden</a>' +
+    '<button class="btn" data-act="copy">In Zwischenablage kopieren</button>' +
+    '<div class="copied" id="copied" role="status">' + esc(ui.copied) + '</div>' +
+    '<button class="btn quiet" data-act="newtask">Neue Aufgabe</button></div>';
+}
+
+/* ---------- Feedback-Text ---------- */
+function feedbackBody() {
+  const sm = summary();
+  const lines = ['Feedback Struktur-Assistent', '', 'Aufgabe: ' + S.task, '', 'Schritte (geplant / gebraucht):'];
+  S.steps.forEach(function (s, i) {
+    lines.push((i + 1) + '. ' + s.titel + ' – ' + s.minuten + ' Min. / ' +
+      (s.status === 'done' ? minLabel(s.elapsed + s.carry) + ' Min.' : 'übersprungen'));
+  });
+  lines.push('Summe (erledigte Schritte): geplant ' + sm.plannedDone + ' Min., gebraucht ' + sm.used + ' Min.', '');
+  lines.push('Waren die Schritte brauchbar? ' + (S.fb.a || '(keine Angabe)'));
+  lines.push('Hat der Timer geholfen? ' + (S.fb.b || '(keine Angabe)'));
+  lines.push('Was hat gefehlt oder genervt? ' + (S.fb.c.trim() || '(keine Angabe)'));
+  return lines.join('\n');
+}
+function updateMailHref() {
+  const a = $('#mailBtn');
+  if (!a) return;
+  a.setAttribute('href', 'mailto:' + encodeURIComponent(FEEDBACK_MAIL).replace(/%40/g, '@') +
+    '?subject=' + encodeURIComponent('Feedback Struktur-Assistent') + '&body=' + encodeURIComponent(feedbackBody()));
+}
+function copyFeedback() {
+  const text = feedbackBody();
+  const ok = function () { ui.copied = 'In die Zwischenablage kopiert.'; const c = $('#copied'); if (c) c.textContent = ui.copied; };
+  const fallback = function () {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+      const r = document.execCommand('copy'); document.body.removeChild(ta);
+      if (r) ok(); else { ui.copied = 'Kopieren nicht möglich.'; const c = $('#copied'); if (c) c.textContent = ui.copied; }
+    } catch (e) { ui.copied = 'Kopieren nicht möglich.'; }
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback);
+    else fallback();
+  } catch (e) { fallback(); }
+}
+
+/* ---------- Rendering ---------- */
+let lastKey = '';
+function render() {
+  const app = $('#app');
+  let html, key;
+  if (ui.loading) { html = viewLoading(); key = 'loading'; }
+  else if (S.phase === 'input') { html = viewInput(); key = 'input'; }
+  else if (S.phase === 'plan') { html = viewPlan(); key = 'plan'; }
+  else if (S.phase === 'focus') {
+    html = S.view === 'all' ? viewAll() : viewFocus();
+    key = 'focus-' + S.view + '-' + S.idx + '-' + ui.transition;
+  } else { html = viewDone(); key = 'done'; }
+  app.innerHTML = html;
+  if (key !== lastKey) { window.scrollTo(0, 0); lastKey = key; }
+  if (S.phase === 'focus' && S.view === 'step' && !ui.transition) updateTimer();
+  if (S.phase === 'plan' && ui.editingId) {
+    const inp = $('#editInput'); if (inp) { inp.focus(); inp.select(); }
+  }
+  if (S.phase === 'done') updateMailHref();
+}
+
+// Timer-Anzeige aktualisieren (ohne komplettes Neuaufbauen)
+function updateTimer() {
+  const st = S.steps[S.idx];
+  const ring = $('#tRing'), wrap = $('#tWrap'), time = $('#tTime'), hint = $('#tHint');
+  if (!st || !ring) return;
+  const total = (st.minuten + st.extra) * 60000;
+  const rem = total - stepElapsed(st);
+  const over = rem <= 0;
+  const frac = over ? 1 : Math.max(0, Math.min(1, rem / total));
+  const C = parseFloat(ring.getAttribute('data-c'));
+  // Rest-Anteil als Bogen, der gegen den Uhrzeigersinn "abläuft" (Time-Timer-Prinzip)
+  ring.setAttribute('stroke-dasharray', (C * frac).toFixed(2) + ' ' + C);
+  ring.setAttribute('stroke-dashoffset', (-(C * (1 - frac))).toFixed(2));
+  wrap.classList.toggle('over', over);
+  time.textContent = fmtClock(rem);
+  hint.classList.toggle('over', over);
+  hint.textContent = over ? 'Zeit um. Fertig – oder brauchst du mehr?' : (S.paused ? 'Pausiert.' : '');
+}
+function updateFocusButtons() {
+  const b = $('#pauseBtn'); if (b) b.textContent = S.paused ? 'Weiter' : 'Pause';
+}
+
+// Tick: 4× pro Sekunde, rechnet immer aus Date.now() neu
+let lastSave = 0;
+function tick() {
+  if (S.phase !== 'focus' || ui.transition) return;
+  const st = S.steps[S.idx];
+  if (!st || st.status !== 'open') return;
+  if (!S.paused && remainingMs(st) <= 0 && !st.alerted) { st.alerted = true; alertUser(); save(); }
+  if (S.view === 'step') updateTimer();
+  if (Date.now() - lastSave > 2000) { lastSave = Date.now(); save(); }
+}
+setInterval(tick, 250);
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible') { tick(); if (S.phase === 'focus') lockScreen(); }
+});
+
+/* ---------- Plan bearbeiten ---------- */
+function stepById(id) { return S.steps.find(s => s.id === id); }
+
+function commitEdit(inp) {
+  const s = stepById(inp.getAttribute('data-id'));
+  if (!s) return;
+  const v = inp.value.trim();
+  if (v) s.titel = v;
+  ui.editingId = null; save();
+  // Nur das Eingabefeld ersetzen, damit ein gleichzeitiger Klick nicht verloren geht
+  const b = document.createElement('button');
+  b.className = 'steptitle'; b.setAttribute('data-act', 'edit'); b.setAttribute('data-id', s.id);
+  b.setAttribute('aria-label', 'Schritt bearbeiten: ' + s.titel); b.textContent = s.titel;
+  if (inp.parentNode) inp.parentNode.replaceChild(b, inp);
+}
+
+function movStep(id, dir) {
+  const i = S.steps.findIndex(s => s.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= S.steps.length) return;
+  const t = S.steps[i]; S.steps[i] = S.steps[j]; S.steps[j] = t;
+}
+
+/* ---------- Spracheingabe ---------- */
+let rec = null;
+function toggleMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  if (rec) { try { rec.stop(); } catch (e) {} return; }
+  try {
+    rec = new SR(); rec.lang = 'de-DE'; rec.interimResults = false; rec.continuous = false;
+    rec.onresult = function (e) {
+      const t = Array.from(e.results).map(r => r[0].transcript).join(' ').trim();
+      if (t) setField(t);
+    };
+    rec.onend = function () { rec = null; ui.listening = false; const b = $('#micBtn'); if (b) b.setAttribute('aria-pressed', 'false'); };
+    rec.onerror = function () { rec = null; ui.listening = false; const b = $('#micBtn'); if (b) b.setAttribute('aria-pressed', 'false'); };
+    rec.start(); ui.listening = true;
+    const b = $('#micBtn'); if (b) b.setAttribute('aria-pressed', 'true');
+  } catch (e) { rec = null; ui.listening = false; }
+}
+function setField(text) {
+  ui.draft = text;
+  const f = $('#taskInput'); if (f) f.value = text;
+  const g = $('#goBtn'); if (g) g.disabled = !text.trim();
+}
+
+/* ---------- Events (delegiert) ---------- */
+const app = $('#app');
+app.addEventListener('click', function (e) {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.getAttribute('data-act'), id = el.getAttribute('data-id');
+  unlockAudio();
+  switch (act) {
+    case 'example': setField(el.getAttribute('data-v')); { const f = $('#taskInput'); if (f) f.focus(); } break;
+    case 'mic': toggleMic(); break;
+    case 'split': startDecompose(); break;
+    case 'resume': {
+      S = ui.saved; ui.saved = null;
+      if (S.phase === 'focus') {
+        const st = S.steps[S.idx];
+        if (st && st.status === 'open' && st.runStart) {
+          // Zeit zwischen letztem Speichern und Reload nicht mitzählen
+          st.elapsed += Math.max(0, (S.savedAt - st.runStart) * SPEED); st.runStart = Date.now();
+        }
+        S.view = 'step'; ui.transition = false;
+        if (st && st.status !== 'open') { advance(); break; }
+        render(); lockScreen();
+      } else render();
+      break;
+    }
+    case 'discard': clearSaved(); render(); break;
+    case 'minus': { const s = stepById(id); if (s && s.minuten > 1) { s.minuten--; save(); render(); } break; }
+    case 'plus': { const s = stepById(id); if (s && s.minuten < 60) { s.minuten++; save(); render(); } break; }
+    case 'up': movStep(id, -1); save(); render(); break;
+    case 'down': movStep(id, 1); save(); render(); break;
+    case 'del': S.steps = S.steps.filter(s => s.id !== id); save(); render(); break;
+    case 'edit': ui.editingId = id; render(); break;
+    case 'add': {
+      const s = mkStep('Neuer Schritt', 5); S.steps.push(s); ui.editingId = s.id; save(); render();
+      const inp = $('#editInput'); if (inp) inp.scrollIntoView({ block: 'center' });
+      break;
+    }
+    case 'start': startFocus(); break;
+    case 'redo': clearSaved(); S = BLANK(); ui.draft = S.task || ui.draft; render(); break;
+    case 'done': finishStep('done'); break;
+    case 'plus5': addFive(); break;
+    case 'pause': togglePause(); break;
+    case 'shrink': splitStep(); break;
+    case 'skip': finishStep('skipped'); break;
+    case 'all': S.view = 'all'; render(); break;
+    case 'back': S.view = 'step'; render(); break;
+    case 'fb': S.fb[el.getAttribute('data-q')] = el.getAttribute('data-v'); save(); render(); break;
+    case 'copy': copyFeedback(); break;
+    case 'newtask': clearSaved(); S = BLANK(); ui.draft = ''; ui.copied = ''; ui.editingId = null; render(); break;
+  }
+});
+app.addEventListener('input', function (e) {
+  if (e.target.id === 'taskInput') setField(e.target.value);
+  else if (e.target.id === 'fbText') { S.fb.c = e.target.value; save(); updateMailHref(); }
+});
+app.addEventListener('keydown', function (e) {
+  if (e.target.id === 'taskInput' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); startDecompose(); }
+  else if (e.target.id === 'editInput') {
+    if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+    else if (e.key === 'Escape') { e.target.value = stepById(e.target.getAttribute('data-id')).titel; e.target.blur(); }
+  }
+});
+app.addEventListener('focusout', function (e) {
+  if (e.target.id === 'editInput') commitEdit(e.target);
+});
+
+/* ---------- Start ---------- */
+ui.saved = loadSaved();
+render();
+</script>
+</body>
+</html>
